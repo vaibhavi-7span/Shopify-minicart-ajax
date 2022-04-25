@@ -1,0 +1,488 @@
+<style>
+    .drawer .quantity {
+      height: 45px;
+    width: auto;
+    }
+    .drawer .quantity__button {
+      font-size: 16px;
+      width: 40px;
+    }
+    .drawer .quantity__button svg {
+      pointer-events: none;
+      height: 30px;
+      width: 30px;
+    }
+    .drawer .quantity__input[type=number], .drawer .quantity__input--bulk {
+      -moz-appearance: textfield;
+      width: 40px;
+      height: auto;
+      padding: 0px 5px;
+    }
+    .drawer .price {
+      font-size: 1.5rem;
+      line-height: 2rem;
+    }
+    .drawer .cart-item__error-text{
+      color: #fff;
+      display: none;
+      margin: 0 0 16px 0;
+      background: #f44336;
+      padding: 12px;
+    }
+    .drawer .cart-item__error-text.active{
+      display: block;
+    }
+    .drawer .free-shipping{
+      display:none;
+    }
+    .drawer .free-shipping.active{
+      display:block;
+    }
+    .drawer__title {
+      font-size: 30px;
+      font-weight: 500;
+    }
+    .drawer .cart-item__price {
+      display: inline-flex;
+      align-items: center;
+    }
+    .no-item{
+      padding: 30px 10px;
+      background: #f8f8f8;
+      text-align: center;
+      border: 1px solid #dadada;
+      display: none;
+    }
+    .no-item.active{
+      display: block;
+    }
+  
+    @media (min-width:1024px) {
+      .drawer .quantity__input[type=number], .drawer .quantity__input--bulk {
+        -moz-appearance: textfield;
+        width: 60px;
+        height: auto;
+      }
+      .drawer .quantity__button {
+        font-size: 16px;
+        width: 50px;
+      }
+    }
+  </style>
+  
+  <section class="drawer cart-item-remove" id="drawer-cart" data-drawer-target>
+    <div class="drawer__overlay cart-closer" data-drawer-close tabindex="-1"></div>
+    <div class="drawer__wrapper">
+      <form action="{{ shop.url }}/cart" method="post">
+        <div class="drawer__header">
+          <div class="drawer__title text-primary-700">My Cart - <span class="under-cart-count"> {{ cart.item_count }}</span>items</div>
+          <button class="drawer__close cart-closer" data-drawer-close aria-label="Close Drawer"></button>
+        </div>
+
+        <div class="drawer__content" id="cart__drawer">
+          <div class="mini-cart-items">
+            {% if cart.total_price >= 20000 %}
+              <p class="free-shipping active bg-primary-700 text-sm font-display p-3 mb-3 text-center text-white uppercase">
+                Congratulations! Your order qualifies for <b class="font-bold">free shipping.</b>
+              </p>
+            {% endif %}
+            <div class="cart-item__error active" id="Line-item-error-{{ item.index | plus: 1 }}" role="alert">
+              <small class="cart-item__error-text"></small>
+            </div>
+            {% if cart.item_count == 0 %}
+              <div class="no-item active"> YOU HAVE NO ITEMS IN YOUR SHOPPING CART.</div>
+            {% else %}
+            
+          {% endif %}
+          <ul class="cart-items space-y-6">
+              {% comment %} Cart ajax {% endcomment %}
+          </ul>
+            <div class="total mini-cart-subtotal">
+              <div class="inline-block">
+                <p class="font-bold text-lg tracking-widest font-display">TOTAL:</p>
+                <p class="text-sm text-gray-500">
+                  Shipping & taxes calculated at checkout
+                </p>
+              </div>
+              <p class="font-bold font-display text-2xl">
+                <span class="price font-bold font-display text-2xl" >{{ cart.total_price | money }}</span>
+              </p>
+            </div>
+          </div>
+  
+          <button type="submit" id="checkout" name="checkout" value="Checkout Securely" class="button w-full mt-6 button--primary-700 button--solid">
+            <span class="button__label">Checkout Securely</span>
+          </button>
+  
+          <a href="/cart" class="button w-full mt-3 button--gray button--solid">
+            <span class="button__label">View Shopping Bag</span>
+          </a>
+  
+          {% comment %} <div class="logos">
+            <img src="{{ 'click-collect-logo.png' | file_img_url: '56x' }}" loading="lazy" />
+            <span class="tracking-widest font-display text-sm text-gray-500">SHOP WITH CONFIDENCE</span>
+            <img src="{{ 'payment-options.png' | file_img_url: '355x' }}" loading="lazy" />
+            <div class="w-24 my-6 border-t-2 border-gray-1s00"></div>
+            <img src="{{ 'shopify-secure.png' | file_img_url: '136x' }}" loading="lazy" />
+          </div> {% endcomment %}
+      </div>
+      </form>
+    </div>
+  </section>
+  
+{% javascript %}
+  $(document).ready(function(){
+    var quantityVal = $(this).parents(".add-to-cart").find(".quantity__input").val();
+      var quantityVal = $(this).parents(".action-buttons").find(".quantity__input").val();
+    $.ajax({
+        type: 'GET',
+        url: '/cart.json',
+        dataType: 'json',
+        success: function(data) { 
+            var item_count = data['item_count'];
+            var total_price = data['total_price']/100;
+            $('.cart-count').text(item_count);
+            $('.drawer__title span').text(item_count);
+            //If there are items in cart
+            if ( item_count > 0 ) {
+                // cart count
+                // mini cart data
+// 				alert("working")
+                $('.drawer__wrapper').attr('id','mini-cart');
+                $('.mini-cart-subtotal .price').text( '$' + total_price.toFixed(2) );
+               if ( total_price >= 200) {
+                 $('.free-shipping').addClass('active');
+               }
+              else{  $('.free-shipping').removeClass('active');}
+                var cart_list = [];
+
+                for( var i = 0; i < data.items.length; i++ ){
+                    if ( data['items'][i]['id'] != null ) {
+                        var item_id = data['items'][i]['id'];
+                        var product_title = data['items'][i]['product_title'];
+                        // var product_title = data['items'][i]['title'];
+                        var product_handle = data['items'][i]['handle'];
+                        var quantity = data['items'][i]['quantity'];
+                        var line_price = '$'+ (data['items'][i]['line_price']/100).toFixed(2);
+                    
+                        var url = data['items'][i]['url'];
+                        var image_url = data['items'][i]['image'];
+                        var variants = data['items'][i]['variant_options'];
+                      	var quantity_plus= quantity + 1;
+                      	var quantity_minus = quantity - 1; 
+                      
+                        if ( product_title == 'Gift Wrap' ) {
+                            var product_url = product_title;
+                        } else {
+                            var product_url = '<a href="https://prolong-dev-2022.myshopify.com/' + url + '">' + product_title + '</a>';
+                        }
+
+                        var options = [];
+                        for ( var o = 0; o < variants.length; o++ ) {
+                            var selected = data['items'][i]['variant_options'][o];
+                            if ( selected !== 'Default Title' ) {
+                                options.push( selected + '<br>' );
+                            }
+                        }
+                        var selected_options = options.join('');
+
+                     	cart_list.push('<li> <div class="cart-item"> <div class="cart-item__image"> <a href="' + url + '"><img src="' + image_url + '" alt="' + product_title + '"/></a> </div><div class="flex-grow"> <div class="title-flex"> <p class="mb-1 font-bold">' + product_url + ' <span class="variant">' + selected_options + '</span></p> <a href="javascript:;" class="button button--tertiary remove-product" data-line-id = "'+ item_id +'" aria-label="remove - '+ product_title +'"> <svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.48913 6.5L12.7645 1.20109C13.0471 0.918478 13.0471 0.471014 12.7645 0.211957C12.4819 -0.0706522 12.0344 -0.0706522 11.7754 0.211957L6.5 5.51087L1.20109 0.211957C0.918478 -0.0706522 0.471014 -0.0706522 0.211957 0.211957C-0.0706522 0.494565 -0.0706522 0.942029 0.211957 1.20109L5.48732 6.5L0.211957 11.7989C-0.0706522 12.0815 -0.0706522 12.529 0.211957 12.788C0.353261 12.9293 0.541667 13 0.706522 13C0.871377 13 1.05978 12.9293 1.20109 12.788L6.5 7.48913L11.7989 12.788C11.9402 12.9293 12.1286 13 12.2935 13C12.4583 13 12.6467 12.9293 12.788 12.788C13.0707 12.5054 13.0707 12.058 12.788 11.7989L7.48913 6.5Z" fill="#010101"/></svg></a></div> <div class="flex justify-between"> <div class="flex items-center"> <quantity-input class="quantity"> <a class="quantity__button qminus no-js-hidden" title="Set quantity to '+ quantity_minus +'" href="javascript:;" data-quantity="'+ quantity_minus +'" data-line-id="'+ item_id +'" data-action="update-item-quantity"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="presentation" class="icon icon-minus" fill="none" viewBox="0 0 10 2"><path fill-rule="evenodd" clip-rule="evenodd" d="M.5 1C.5.7.7.5 1 .5h8a.5.5 0 110 1H1A.5.5 0 01.5 1z" fill="currentColor"></path></svg> </a> <input class="quantity__input" type="number" name="updates[]" value="'+ quantity +'" min="0" id="Quantity-'+ quantity_minus +'"> <a class="quantity__button qplus no-js-hidden" title="Set quantity to '+ quantity_plus +'" href="javascript:;" data-quantity="'+ quantity_plus +'" data-line-id="'+ item_id +'" data-action="update-item-quantity"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="presentation" class="icon icon-plus" fill="none" viewBox="0 0 10 10"> <path fill-rule="evenodd" clip-rule="evenodd" d="M1 4.51a.5.5 0 000 1h3.5l.01 3.5a.5.5 0 001-.01V5.5l3.5-.01a.5.5 0 00-.01-1H5.5L5.49.99a.5.5 0 00-1 .01v3.5l-3.5.01H1z" fill="currentColor"></path> </svg> </a> </quantity-input> </div><div class="cart-item__price"> <p class="text-lg">' + line_price + '</p></div></div></div></div></li>');
+
+                        $('.mini-cart-items ul').html( cart_list.join('') );
+                       $('.mini-cart-items .no-item').removeClass('active');
+//                       console.log(line_price);
+                    } //endif
+                } // endfor
+            } else{
+              $('.mini-cart-items ul').html('');
+              $('.mini-cart-items .no-item').addClass('active');
+              $('.mini-cart-subtotal .price').text('0');
+            }
+        },
+       error: function (request, status, error) {
+            console.log(request.responseText);
+        }
+    });
+});
+
+$('.drawer').on('click', '.qminus', function(){
+		if ($(this).next().val() >= 1) {
+			var quantityItem = $(this).next().val(+$(this).next().val() - 1);
+		}
+		var vId = $(this).attr("data-line-id");
+		var quantityVal = $(this).next().val();
+		$.ajax({
+			type: 'POST',
+			url: '/cart/change.js',
+			dataType: 'json',
+			data: {
+				quantity: quantityVal,
+				id: vId
+			},
+			success: function (data){
+				$.ajax({
+					type: 'GET',
+					dataType: 'jsonp',
+					url: '/cart.json',
+					success: function(cart){
+						var item_count = cart['item_count'];
+						var total_price = cart['total_price']/100;
+            $('.cart-count').text(item_count);
+            $('.drawer__title span').text(item_count);
+						if ( item_count > 0 ) {
+							  // cart count
+                              $('.cart-count').text(item_count);
+                              $('.drawer__title span').text(item_count);
+                              // mini cart data
+              // 				alert("working")
+                              $('.drawer__wrapper').attr('id','mini-cart');
+                              $('.mini-cart-subtotal .price').text( '$' + total_price.toFixed(2) );
+                                if ( total_price >= 200) {
+                					 $('.free-shipping').addClass('active');
+               					}
+              					else{  $('.free-shipping').removeClass('active');}
+                              var cart_list = [];
+
+							for( var i = 0; i < cart.items.length; i++ ){
+								if ( cart['items'][i]['id'] !== null ) {
+									var item_id = cart['items'][i]['id'];
+									var product_title = cart['items'][i]['product_title'];
+									// var product_title = cart['items'][i]['title'];
+									var product_handle = cart['items'][i]['handle'];
+									var quantity = cart['items'][i]['quantity'];
+                                  	var quantity_plus= quantity + 1;
+                                    var quantity_minus = quantity - 1; 
+									var item_price = cart['items'][i]['price']/100;
+// 									var line_price = cart['items'][i]['line_price']/100;
+									var line_price = '$'+ (cart['items'][i]['line_price']/100).toFixed(2);
+									var url = cart['items'][i]['url'];
+									var image_url = cart['items'][i]['image'];
+									var variants = cart['items'][i]['variant_options'];
+// 									    console.log("get from qminus" + data['items'][i]['price']);   
+									if ( product_title == 'Gift Wrap' ) {
+										var product_url = product_title;
+									} else {
+										var product_url = '<a href="' + url + '">' + product_title + '</a>';
+									}
+
+									var options = [];
+									for ( var o = 0; o < variants.length; o++ ) {
+										var selected = cart['items'][i]['variant_options'][o];
+										if ( selected !== 'Default Title' ) {
+											options.push( selected + '<br>' );
+										}
+									};
+									var selected_options = options.join('');
+
+									var item_line_price_elm = $('#line_price_'+item_id);
+
+// 									item_line_price_elm.html(Shopify.formatMoney(line_price).replace('$','£'));
+
+                  cart_list.push('<li> <div class="cart-item"> <div class="cart-item__image"> <a href="' + url + '"><img src="' + image_url + '" alt="' + product_title + '"/></a> </div><div class="flex-grow"> <div class="title-flex"> <p class="mb-1 font-bold">' + product_url + ' <span class="variant">' + selected_options + '</span></p> <a href="javascript:;" class="button button--tertiary remove-product" data-line-id = "'+ item_id +'" aria-label="remove - '+ product_title +'"> <svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.48913 6.5L12.7645 1.20109C13.0471 0.918478 13.0471 0.471014 12.7645 0.211957C12.4819 -0.0706522 12.0344 -0.0706522 11.7754 0.211957L6.5 5.51087L1.20109 0.211957C0.918478 -0.0706522 0.471014 -0.0706522 0.211957 0.211957C-0.0706522 0.494565 -0.0706522 0.942029 0.211957 1.20109L5.48732 6.5L0.211957 11.7989C-0.0706522 12.0815 -0.0706522 12.529 0.211957 12.788C0.353261 12.9293 0.541667 13 0.706522 13C0.871377 13 1.05978 12.9293 1.20109 12.788L6.5 7.48913L11.7989 12.788C11.9402 12.9293 12.1286 13 12.2935 13C12.4583 13 12.6467 12.9293 12.788 12.788C13.0707 12.5054 13.0707 12.058 12.788 11.7989L7.48913 6.5Z" fill="#010101"/></svg></a></div> <div class="flex justify-between"> <div class="flex items-center"> <quantity-input class="quantity"> <a class="quantity__button qminus no-js-hidden" title="Set quantity to '+ quantity_minus +'" href="javascript:;" data-quantity="'+ quantity_minus +'" data-line-id="'+ item_id +'" data-action="update-item-quantity"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="presentation" class="icon icon-minus" fill="none" viewBox="0 0 10 2"><path fill-rule="evenodd" clip-rule="evenodd" d="M.5 1C.5.7.7.5 1 .5h8a.5.5 0 110 1H1A.5.5 0 01.5 1z" fill="currentColor"></path></svg> </a> <input class="quantity__input" type="number" name="updates[]" value="'+ quantity +'" min="0" id="Quantity-'+ quantity_minus +'"> <a class="quantity__button qplus no-js-hidden" title="Set quantity to '+ quantity_plus +'" href="javascript:;" data-quantity="'+ quantity_plus +'" data-line-id="'+ item_id +'" data-action="update-item-quantity"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="presentation" class="icon icon-plus" fill="none" viewBox="0 0 10 10"> <path fill-rule="evenodd" clip-rule="evenodd" d="M1 4.51a.5.5 0 000 1h3.5l.01 3.5a.5.5 0 001-.01V5.5l3.5-.01a.5.5 0 00-.01-1H5.5L5.49.99a.5.5 0 00-1 .01v3.5l-3.5.01H1z" fill="currentColor"></path> </svg> </a> </quantity-input> </div><div class="cart-item__price"> <p class="text-lg">' + line_price + '</p></div></div></div></div></li>');
+
+								} //endif
+							}; // endfor
+
+							$('.mini-cart-items ul').html( cart_list.join('') );
+                           $('.cart-item__error-text').removeClass('active');
+                          $('.mini-cart-items .no-item').removeClass('active');
+						}
+                      	else{
+                            $('.mini-cart-items ul').html('');
+                           $('.mini-cart-items .no-item').addClass('active');
+                           $('.mini-cart-subtotal .price').text('');
+                        }
+					}
+				});
+			}
+		});
+	});
+  
+  $('.drawer').on('click', '.qplus', function(){
+		$(this).prev().val(+$(this).prev().val() + 1);
+		var cartPvarinatID = $(this).attr("data-line-id");
+		var quantityVal = $(this).prev().val();
+        const qplus = $(this);
+		$.ajax({
+			type: 'POST',
+			url: '/cart/add.js',
+			dataType: 'json',
+			data: {
+				quantity: 1,
+				id: cartPvarinatID
+			},
+			success: function (data){
+              
+				$.ajax({
+					type: 'GET',
+					dataType: 'jsonp',
+					url: '/cart.json',
+					success: function(cart){
+						var item_count = cart['item_count'];
+						var total_price = cart['total_price']/100;
+            $('.cart-count').text(item_count);
+            $('.drawer__title span').text(item_count);
+						if ( item_count > 0 ) {
+							 // cart count
+                             
+                              // mini cart data
+              // 				alert("working")
+                              $('.drawer__wrapper').attr('id','mini-cart');
+                              $('.mini-cart-subtotal .price').text( '$' + total_price.toFixed(2) );
+                                if ( total_price >= 200) {
+                					 $('.free-shipping').addClass('active');
+               					}
+              					else{  $('.free-shipping').removeClass('active');}
+                              var cart_list = [];
+
+							for( var i = 0; i < cart.items.length; i++ ){
+								if ( cart['items'][i]['id'] !== null ) {
+									var item_id = cart['items'][i]['id'];
+									var product_title = cart['items'][i]['product_title'];
+                 
+									// var product_title = cart['items'][i]['title'];
+									var product_handle = cart['items'][i]['handle'];
+									var quantity = cart['items'][i]['quantity'];
+                                  	var quantity_plus= quantity + 1;
+                                    var quantity_minus = quantity - 1; 
+                                    var remove_item = 0;
+									var item_price = cart['items'][i]['price']/100;
+                                  	var line_price = '$'+ (cart['items'][i]['line_price']/100).toFixed(2);
+// 									var line_price = cart['items'][i]['line_price']/100;
+									var url = cart['items'][i]['url'];
+									var image_url = cart['items'][i]['image'];
+									var variants = cart['items'][i]['variant_options'];
+// 									    console.log("get from qplus" + cart['items'][i]['price']);   
+									if ( product_title == 'Gift Wrap' ) {
+										var product_url = product_title;
+									} else {
+										var product_url = '<a href="' + url + '">' + product_title + '</a>';
+									}
+
+									var options = [];
+									for ( var o = 0; o < variants.length; o++ ) {
+										var selected = cart['items'][i]['variant_options'][o];
+										if ( selected !== 'Default Title' ) {
+											options.push( selected + '<br>' );
+										}
+									};
+									var selected_options = options.join('');
+
+									var item_line_price_elm = $('#line_price_'+item_id);
+// 									item_line_price_elm.html(Shopify.formatMoney(line_price).replace('$','£'));
+                  cart_list.push('<li> <div class="cart-item"> <div class="cart-item__image"> <a href="' + url + '"><img src="' + image_url + '" alt="' + product_title + '"/></a> </div><div class="flex-grow"> <div class="title-flex"> <p class="mb-1 font-bold">' + product_url + ' <span class="variant">' + selected_options + '</span></p> <a href="javascript:;" class="button button--tertiary remove-product" data-line-id = "'+ item_id +'" aria-label="remove - '+ product_title +'"> <svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.48913 6.5L12.7645 1.20109C13.0471 0.918478 13.0471 0.471014 12.7645 0.211957C12.4819 -0.0706522 12.0344 -0.0706522 11.7754 0.211957L6.5 5.51087L1.20109 0.211957C0.918478 -0.0706522 0.471014 -0.0706522 0.211957 0.211957C-0.0706522 0.494565 -0.0706522 0.942029 0.211957 1.20109L5.48732 6.5L0.211957 11.7989C-0.0706522 12.0815 -0.0706522 12.529 0.211957 12.788C0.353261 12.9293 0.541667 13 0.706522 13C0.871377 13 1.05978 12.9293 1.20109 12.788L6.5 7.48913L11.7989 12.788C11.9402 12.9293 12.1286 13 12.2935 13C12.4583 13 12.6467 12.9293 12.788 12.788C13.0707 12.5054 13.0707 12.058 12.788 11.7989L7.48913 6.5Z" fill="#010101"/></svg></a></div> <div class="flex justify-between"> <div class="flex items-center"> <quantity-input class="quantity"> <a class="quantity__button qminus no-js-hidden" title="Set quantity to '+ quantity_minus +'" href="javascript:;" data-quantity="'+ quantity_minus +'" data-line-id="'+ item_id +'" data-action="update-item-quantity"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="presentation" class="icon icon-minus" fill="none" viewBox="0 0 10 2"><path fill-rule="evenodd" clip-rule="evenodd" d="M.5 1C.5.7.7.5 1 .5h8a.5.5 0 110 1H1A.5.5 0 01.5 1z" fill="currentColor"></path></svg> </a> <input class="quantity__input" type="number" name="updates[]" value="'+ quantity +'" min="0" id="Quantity-'+ quantity_minus +'"> <a class="quantity__button qplus no-js-hidden" title="Set quantity to '+ quantity_plus +'" href="javascript:;" data-quantity="'+ quantity_plus +'" data-line-id="'+ item_id +'" data-action="update-item-quantity"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="presentation" class="icon icon-plus" fill="none" viewBox="0 0 10 10"> <path fill-rule="evenodd" clip-rule="evenodd" d="M1 4.51a.5.5 0 000 1h3.5l.01 3.5a.5.5 0 001-.01V5.5l3.5-.01a.5.5 0 00-.01-1H5.5L5.49.99a.5.5 0 00-1 .01v3.5l-3.5.01H1z" fill="currentColor"></path> </svg> </a> </quantity-input> </div><div class="cart-item__price"> <p class="text-lg">' + line_price + '</p></div></div></div></div></li>');
+
+
+								} //endif
+							}; // endfor
+							$('.mini-cart-items ul').html( cart_list.join('') );
+                          $('.cart-item__error-text').removeClass('active');
+                           $('.mini-cart-items .no-item').removeClass('active');
+						}
+					}
+				});
+			},
+          	error: function (data) {
+//               console.log(JSON.parse(data.responseText).message);
+//              console.log(JSON.parse(data.responseText).description);
+              
+             
+             $('.cart-item__error-text').text(JSON.parse(data.responseText).description);
+             $('.cart-item__error-text').addClass('active');
+               console.log(qplus.prev().val());
+              qplus.prev().val(+qplus.prev().val() - 1);
+          }
+		});
+	});
+ 
+$('.drawer').on('click', '.remove-product', function(){
+		if ($(this).next().val() >= 1) {
+			var quantityItem = $(this).next().val(+$(this).next().val() - 1);
+		}
+		var vId = $(this).attr("data-line-id");
+		$.ajax({
+			type: 'POST',
+			url: '/cart/change.js',
+			dataType: 'json',
+			data: {
+				quantity: 0,
+				id: vId
+			},
+			success: function (data){
+				$.ajax({
+					type: 'GET',
+					dataType: 'jsonp',
+					url: '/cart.json',
+					success: function(cart){
+						var item_count = cart['item_count'];
+						var total_price = cart['total_price']/100;
+            $('.cart-count').text(item_count);
+            $('.drawer__title span').text(item_count);
+						if ( item_count > 0 ) {
+							  // cart count
+                              // mini cart data
+              // 				alert("working")
+                              $('.drawer__wrapper').attr('id','mini-cart');
+                              $('.mini-cart-subtotal .price').text( '$' + total_price.toFixed(2) );
+                                if ( total_price >= 200) {
+                					 $('.free-shipping').addClass('active');
+               					}
+              					else{  $('.free-shipping').removeClass('active');}
+                              var cart_list = [];
+
+							for( var i = 0; i < cart.items.length; i++ ){
+								if ( cart['items'][i]['id'] !== null ) {
+									var item_id = cart['items'][i]['id'];
+									var product_title = cart['items'][i]['product_title'];
+									// var product_title = cart['items'][i]['title'];
+									var product_handle = cart['items'][i]['handle'];
+									var quantity = cart['items'][i]['quantity'];
+                                  	var quantity_plus= quantity + 1;
+                                    var quantity_minus = quantity - 1; 
+									var item_price = cart['items'][i]['price']/100;
+// 									var line_price = cart['items'][i]['line_price']/100;
+									var line_price = '$'+ (cart['items'][i]['line_price']/100).toFixed(2);
+									var url = cart['items'][i]['url'];
+									var image_url = cart['items'][i]['image'];
+									var variants = cart['items'][i]['variant_options'];
+// 									    console.log("get from qminus" + data['items'][i]['price']);   
+									if ( product_title == 'Gift Wrap' ) {
+										var product_url = product_title;
+									} else {
+										var product_url = '<a href="' + url + '">' + product_title + '</a>';
+									}
+
+									var options = [];
+									for ( var o = 0; o < variants.length; o++ ) {
+										var selected = cart['items'][i]['variant_options'][o];
+										if ( selected !== 'Default Title' ) {
+											options.push( selected + '<br>' );
+										}
+									};
+									var selected_options = options.join('');
+
+									var item_line_price_elm = $('#line_price_'+item_id);
+
+// 									item_line_price_elm.html(Shopify.formatMoney(line_price).replace('$','£'));
+
+                  cart_list.push('<li> <div class="cart-item"> <div class="cart-item__image"> <a href="' + url + '"><img src="' + image_url + '" alt="' + product_title + '"/></a> </div><div class="flex-grow"> <div class="title-flex"> <p class="mb-1 font-bold">' + product_url + ' <span class="variant">' + selected_options + '</span></p> <a href="javascript:;" class="button button--tertiary remove-product" data-line-id = "'+ item_id +'" aria-label="remove - '+ product_title +'"> <svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.48913 6.5L12.7645 1.20109C13.0471 0.918478 13.0471 0.471014 12.7645 0.211957C12.4819 -0.0706522 12.0344 -0.0706522 11.7754 0.211957L6.5 5.51087L1.20109 0.211957C0.918478 -0.0706522 0.471014 -0.0706522 0.211957 0.211957C-0.0706522 0.494565 -0.0706522 0.942029 0.211957 1.20109L5.48732 6.5L0.211957 11.7989C-0.0706522 12.0815 -0.0706522 12.529 0.211957 12.788C0.353261 12.9293 0.541667 13 0.706522 13C0.871377 13 1.05978 12.9293 1.20109 12.788L6.5 7.48913L11.7989 12.788C11.9402 12.9293 12.1286 13 12.2935 13C12.4583 13 12.6467 12.9293 12.788 12.788C13.0707 12.5054 13.0707 12.058 12.788 11.7989L7.48913 6.5Z" fill="#010101"/></svg></a></div> <div class="flex justify-between"> <div class="flex items-center"> <quantity-input class="quantity"> <a class="quantity__button qminus no-js-hidden" title="Set quantity to '+ quantity_minus +'" href="javascript:;" data-quantity="'+ quantity_minus +'" data-line-id="'+ item_id +'" data-action="update-item-quantity"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="presentation" class="icon icon-minus" fill="none" viewBox="0 0 10 2"><path fill-rule="evenodd" clip-rule="evenodd" d="M.5 1C.5.7.7.5 1 .5h8a.5.5 0 110 1H1A.5.5 0 01.5 1z" fill="currentColor"></path></svg> </a> <input class="quantity__input" type="number" name="updates[]" value="'+ quantity +'" min="0" id="Quantity-'+ quantity_minus +'"> <a class="quantity__button qplus no-js-hidden" title="Set quantity to '+ quantity_plus +'" href="javascript:;" data-quantity="'+ quantity_plus +'" data-line-id="'+ item_id +'" data-action="update-item-quantity"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="presentation" class="icon icon-plus" fill="none" viewBox="0 0 10 10"> <path fill-rule="evenodd" clip-rule="evenodd" d="M1 4.51a.5.5 0 000 1h3.5l.01 3.5a.5.5 0 001-.01V5.5l3.5-.01a.5.5 0 00-.01-1H5.5L5.49.99a.5.5 0 00-1 .01v3.5l-3.5.01H1z" fill="currentColor"></path> </svg> </a> </quantity-input> </div><div class="cart-item__price"> <p class="text-lg">' + line_price + '</p></div></div></div></div></li>');
+
+								} //endif
+							}; // endfor
+              $(this).remove("data-line-id");
+							$('.mini-cart-items ul').html( cart_list.join('') );
+                           $('.cart-item__error-text').removeClass('active');
+                          $('.mini-cart-items .no-item').removeClass('active');
+						}
+                      	else{
+                            $('.mini-cart-items ul').html('');
+                           $('.mini-cart-items .no-item').addClass('active');
+                           $('.mini-cart-subtotal .price').text('');
+                        }
+					}
+				});
+			}
+		});
+	});
+{% endjavascript %}
+  
